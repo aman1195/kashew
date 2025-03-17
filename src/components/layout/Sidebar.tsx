@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/components/auth/AuthProvider";
 import {
   LayoutDashboard,
   FileText,
@@ -28,6 +29,31 @@ interface SidebarProps {
 
 const Sidebar = ({ className = "" }: SidebarProps) => {
   const pathname = usePathname();
+  const { user, signOut, loading } = useAuth();
+
+  // Function to generate initials from email or name
+  const getInitials = () => {
+    if (!user) return '??'
+    
+    // Try to get initials from email if no name
+    const email = user.email || ''
+    if (!user.user_metadata?.full_name) {
+      return email.substring(0, 2).toUpperCase()
+    }
+
+    // Get initials from full name
+    return user.user_metadata.full_name
+      .split(' ')
+      .map((n: string) => n[0])
+      .join('')
+      .toUpperCase()
+  }
+
+  // Function to get display name
+  const getDisplayName = () => {
+    if (!user) return 'User'
+    return user.user_metadata?.full_name || user.email?.split('@')[0] || 'User'
+  }
 
   const navItems = [
     {
@@ -120,6 +146,7 @@ const Sidebar = ({ className = "" }: SidebarProps) => {
               <Button
                 variant="ghost"
                 className="w-full justify-start gap-3 px-3 py-2 text-white/80 hover:text-white hover:bg-white/10"
+                onClick={signOut}
               >
                 <LogOut className="h-5 w-5" />
                 <span>Logout</span>
@@ -134,13 +161,19 @@ const Sidebar = ({ className = "" }: SidebarProps) => {
         <div className="mt-4 flex items-center gap-3 px-3 py-3 rounded-md bg-white/10">
           <div className="relative">
             <div className="h-10 w-10 rounded-full bg-vibrant-pink flex items-center justify-center">
-              <span className="text-sm font-medium text-black">JD</span>
+              <span className="text-sm font-medium text-black">
+                {loading ? '??' : getInitials()}
+              </span>
             </div>
             <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 border-2 border-vibrant-black"></span>
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-medium text-white">John Doe</span>
-            <span className="text-xs text-white/60">john@example.com</span>
+            <span className="text-sm font-medium text-white">
+              {loading ? 'Loading...' : getDisplayName()}
+            </span>
+            <span className="text-xs text-white/60">
+              {loading ? '...' : user?.email || 'No email'}
+            </span>
           </div>
         </div>
       </div>

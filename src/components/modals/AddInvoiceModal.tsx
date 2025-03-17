@@ -130,9 +130,8 @@ export default function AddInvoiceModal({
         items: formData.items,
       };
 
-      await createInvoice(data);
       onSubmit(data);
-    onOpenChange(false);
+      onOpenChange(false);
       setFormData({
         clientId: "",
         date: new Date().toISOString().split('T')[0],
