@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import Link from 'next/link'
 
 export default function RegisterPage() {
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -20,7 +21,7 @@ export default function RegisterPage() {
     try {
       setError(null)
       setLoading(true)
-      await signUpWithEmail(email, password)
+      await signUpWithEmail(email, password, name)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to sign up')
     } finally {
@@ -34,7 +35,7 @@ export default function RegisterPage() {
         <CardHeader>
           <CardTitle className="text-center text-3xl font-bold">Create an account</CardTitle>
           <CardDescription className="text-center">
-            Enter your email below to create your account
+            Enter your details below to create your account
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -44,6 +45,17 @@ export default function RegisterPage() {
                 {error}
               </div>
             )}
+            <div className="space-y-1">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                type="text"
+                placeholder="John Doe"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+            </div>
             <div className="space-y-1">
               <Label htmlFor="email">Email</Label>
               <Input

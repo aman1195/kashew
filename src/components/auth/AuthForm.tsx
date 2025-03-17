@@ -24,7 +24,7 @@ interface AuthFormProps {
 
 const AuthForm = ({ className = "" }: AuthFormProps) => {
   const router = useRouter();
-  const { signIn, signUp, googleSignIn } = useAuth();
+  const { signInWithEmail, signUpWithEmail, googleSignIn } = useAuth();
   const [formType, setFormType] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -39,17 +39,22 @@ const AuthForm = ({ className = "" }: AuthFormProps) => {
 
     try {
       if (formType === "login") {
-        await signIn(email, password);
+        await signInWithEmail(email, password);
       } else {
-        await signUp(email, password, name);
+        await signUpWithEmail(email, password, name);
       }
       router.push("/");
     } catch (err) {
-      setError(
-        formType === "login"
-          ? "Failed to sign in. Please check your credentials."
-          : "Failed to create account. Please try again.",
-      );
+      console.error('Auth error:', err);
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError(
+          formType === "login"
+            ? "Failed to sign in. Please check your credentials."
+            : "Failed to create account. Please try again."
+        );
+      }
     } finally {
       setIsLoading(false);
     }

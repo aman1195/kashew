@@ -10,7 +10,7 @@ type AuthContextType = {
   session: Session | null
   signOut: () => Promise<void>
   signInWithEmail: (email: string, password: string) => Promise<void>
-  signUpWithEmail: (email: string, password: string) => Promise<void>
+  signUpWithEmail: (email: string, password: string, name: string) => Promise<void>
   loading: boolean
 }
 
@@ -44,12 +44,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) throw error
   }
 
-  const signUpWithEmail = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-    })
-    if (error) throw error
+  const signUpWithEmail = async (email: string, password: string, name: string) => {
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: name,
+          },
+        },
+      })
+      
+      if (error) {
+        console.error('Sign up error:', error)
+        throw new Error(error.message)
+      }
+      
+      if (!data.user) {
+        throw new Error('No user data returned')
+      }
+    } catch (error) {
+      console.error('Sign up error:', error)
+      throw error
+    }
   }
 
   const signOut = async () => {
