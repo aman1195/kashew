@@ -11,6 +11,7 @@ type AuthContextType = {
   signOut: () => Promise<void>
   signInWithEmail: (email: string, password: string) => Promise<void>
   signUpWithEmail: (email: string, password: string, name: string) => Promise<void>
+  sendVerificationEmail: () => Promise<void>
   loading: boolean
 }
 
@@ -70,6 +71,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const sendVerificationEmail = async () => {
+    if (!user) return;
+    
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: user.email!,
+    });
+    
+    if (error) throw error;
+  }
+
   const signOut = async () => {
     const { error } = await supabase.auth.signOut()
     if (error) throw error
@@ -83,6 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signOut,
       signInWithEmail,
       signUpWithEmail,
+      sendVerificationEmail,
       loading,
     }}>
       {children}

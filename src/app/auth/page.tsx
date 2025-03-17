@@ -20,7 +20,7 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-muted/30">
       <div className="w-full max-w-md space-y-6">
-        {user && !user.isVerified ? <VerifyEmail /> : !user && <AuthForm />}
+        {user && !user.email_confirmed_at ? <VerifyEmail /> : !user && <AuthForm />}
       </div>
     </div>
   );

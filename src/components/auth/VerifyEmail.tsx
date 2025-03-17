@@ -33,7 +33,7 @@ export default function VerifyEmail() {
   };
 
   if (!user) return null;
-  if (user.isVerified) return null;
+  if (user.email_confirmed_at) return null;
 
   return (
     <Card className="w-full max-w-md mx-auto modern-card">
