@@ -122,7 +122,7 @@ export async function getClients() {
   // Process clients data
   const processedClients = clients.map(client => {
     const totalInvoices = client.invoices?.length || 0;
-    const totalSpent = client.invoices?.reduce((sum, inv) => {
+    const totalSpent = client.invoices?.reduce((sum: number, inv: { status: string; total: number }) => {
       if (inv.status === 'paid') {
         return sum + Number(inv.total);
       }
@@ -135,6 +135,7 @@ export async function getClients() {
       contactName: client.contact_name || client.name,
       email: client.email,
       phone: client.phone || 'N/A',
+      address: client.address || '',
       totalInvoices,
       totalSpent,
     };
@@ -241,10 +242,14 @@ export async function createProduct(productData: {
   price: number;
   type: string;
   unit: string;
-  taxRate: number;
+  taxRate?: number;
+  tax_rate?: number; // Support both for backward compatibility
 }) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
+
+  // Use tax_rate if provided, otherwise use taxRate
+  const taxRate = productData.tax_rate !== undefined ? productData.tax_rate : (productData.taxRate || 0);
 
   const { data, error } = await supabase
     .from('products')
@@ -255,7 +260,7 @@ export async function createProduct(productData: {
         price: productData.price,
         type: productData.type,
         unit: productData.unit,
-        tax_rate: productData.taxRate,
+        tax_rate: taxRate,
         user_id: user.id,
       },
     ])
@@ -276,6 +281,9 @@ export async function updateProduct(
     description?: string;
     price?: number;
     archived?: boolean;
+    unit?: string;
+    tax_rate?: number;
+    type?: string;
   }
 ) {
   const { data: { user } } = await supabase.auth.getUser();
@@ -331,61 +339,112 @@ export async function getInvoices() {
 
   if (error) throw error;
 
+  // Check and update overdue invoices
+  const currentDate = new Date();
+  currentDate.setHours(0, 0, 0, 0); // Set to start of day for accurate comparison
+
+  const overdueInvoices = invoices?.filter(invoice => {
+    const dueDate = new Date(invoice.due_date);
+    dueDate.setHours(0, 0, 0, 0); // Set to start of day for accurate comparison
+    return invoice.status !== 'paid' && dueDate < currentDate;
+  }) || [];
+
+  // Update overdue invoices in the database
+  if (overdueInvoices.length > 0) {
+    const { error: updateError } = await supabase
+      .from('invoices')
+      .update({ status: 'overdue' })
+      .in('id', overdueInvoices.map(inv => inv.id))
+      .eq('user_id', user.id);
+
+    if (updateError) {
+      console.error('Error updating overdue invoices:', updateError);
+    }
+  }
+
   // Calculate summary data
   const totalInvoices = invoices?.length || 0;
-  const totalAmount = invoices?.reduce((sum, inv) => sum + Number(inv.total), 0) || 0;
+  const totalAmount = invoices?.reduce((sum: number, inv: { total: number }) => sum + Number(inv.total), 0) || 0;
   const paidInvoices = invoices?.filter(inv => inv.status === 'paid').length || 0;
-  const overdueInvoices = invoices?.filter(inv => inv.status === 'overdue').length || 0;
+  const overdueInvoicesCount = overdueInvoices.length;
 
-  return {
-    invoices: invoices?.map(invoice => ({
+  // Map invoices with updated status for overdue ones
+  const mappedInvoices = invoices?.map(invoice => {
+    const dueDate = new Date(invoice.due_date);
+    dueDate.setHours(0, 0, 0, 0);
+    const isOverdue = invoice.status !== 'paid' && dueDate < currentDate;
+
+    return {
       id: invoice.id,
       number: invoice.number,
       date: invoice.date,
       dueDate: invoice.due_date,
-      status: invoice.status,
+      status: isOverdue ? 'overdue' : invoice.status,
+      subtotal: Number(invoice.subtotal) || 0,
       total: Number(invoice.total),
+      tax: {
+        rate: Number(invoice.tax_rate) || 0,
+        type: invoice.tax_type || 'vat',
+        amount: Number(invoice.tax_amount) || 0,
+      },
+      notes: invoice.notes || '',
+      terms: invoice.terms || '',
       client: invoice.client,
       items: invoice.items,
-    })) || [],
+    };
+  }) || [];
+
+  return {
+    invoices: mappedInvoices,
     summary: {
       totalInvoices,
       totalAmount,
       paidInvoices,
-      overdueInvoices,
+      overdueInvoices: overdueInvoicesCount,
     }
   };
 }
 
 export async function createInvoice(invoiceData: {
-  number: string;
+  clientId: string;
   date: string;
   dueDate: string;
-  clientId: string;
   items: Array<{
     description: string;
     quantity: number;
     price: number;
   }>;
+  tax: {
+    rate: number;
+    type: string;
+    amount: number;
+  };
+  subtotal: number;
+  total: number;
+  notes?: string;
+  terms?: string;
 }) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
-  // Calculate total
-  const total = invoiceData.items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
-
-  // Start a transaction
+  // Create the invoice
   const { data: invoice, error: invoiceError } = await supabase
     .from('invoices')
     .insert([
       {
-        number: invoiceData.number,
+        number: `INV-${Date.now().toString().slice(-6)}`,
         date: invoiceData.date,
         due_date: invoiceData.dueDate,
-        client_id: invoiceData.clientId,
-        total,
         status: 'draft',
+        client_id: invoiceData.clientId,
         user_id: user.id,
+        subtotal: invoiceData.subtotal,
+        tax_rate: invoiceData.tax.rate,
+        tax_amount: invoiceData.tax.amount,
+        tax_type: invoiceData.tax.type,
+        total: invoiceData.total,
+        notes: invoiceData.notes,
+        terms: invoiceData.terms,
       },
     ])
     .select()
@@ -393,13 +452,15 @@ export async function createInvoice(invoiceData: {
 
   if (invoiceError) throw invoiceError;
 
-  // Insert invoice items
+  // Create invoice items
   const { error: itemsError } = await supabase
     .from('invoice_items')
     .insert(
       invoiceData.items.map(item => ({
         invoice_id: invoice.id,
-        ...item,
+        description: item.description,
+        quantity: item.quantity,
+        price: item.price,
       }))
     );
 
@@ -518,6 +579,7 @@ export async function recordPayment(paymentData: {
   invoiceId: string;
   amount: number;
   paymentMethod: string;
+  status: 'completed' | 'pending' | 'failed';
 }) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
@@ -530,7 +592,7 @@ export async function recordPayment(paymentData: {
         amount: paymentData.amount,
         payment_method: paymentData.paymentMethod,
         user_id: user.id,
-        status: 'completed',
+        status: paymentData.status,
       },
     ])
     .select()
@@ -538,12 +600,14 @@ export async function recordPayment(paymentData: {
 
   if (error) throw error;
 
-  // Update invoice status to paid
-  await supabase
-    .from('invoices')
-    .update({ status: 'paid' })
-    .eq('id', paymentData.invoiceId)
-    .eq('user_id', user.id);
+  // Only update invoice status to paid if payment is completed
+  if (paymentData.status === 'completed') {
+    await supabase
+      .from('invoices')
+      .update({ status: 'paid' })
+      .eq('id', paymentData.invoiceId)
+      .eq('user_id', user.id);
+  }
 
   return data;
 }
@@ -573,24 +637,57 @@ export async function updateInvoice(
       quantity: number;
       price: number;
     }>;
+    tax?: {
+      rate: number;
+      type: string;
+      amount: number;
+    };
+    subtotal?: number;
+    notes?: string;
+    terms?: string;
   }
 ) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
-  // If items are provided, calculate new total
-  let total;
+  // If items are provided, calculate new subtotal
+  let subtotal, total;
   if (invoiceData.items) {
-    total = invoiceData.items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+    subtotal = invoiceData.items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+    // Calculate tax amount if tax rate is provided
+    const taxAmount = invoiceData.tax?.rate 
+      ? subtotal * (invoiceData.tax.rate / 100) 
+      : 0;
+    
+    // Calculate total
+    total = subtotal + taxAmount;
+    
+    // Update tax amount
+    if (invoiceData.tax) {
+      invoiceData.tax.amount = taxAmount;
+    }
   }
+
+  // Prepare data for update
+  const updateData = {
+    ...invoiceData,
+    ...(subtotal !== undefined ? { subtotal } : {}),
+    ...(invoiceData.tax ? { 
+      tax_rate: invoiceData.tax.rate,
+      tax_amount: invoiceData.tax.amount,
+      tax_type: invoiceData.tax.type 
+    } : {}),
+    ...(total !== undefined ? { total } : {}),
+  };
+
+  // Remove items and tax from update data (they go to different tables)
+  delete updateData.items;
+  delete updateData.tax;
 
   // Update invoice
   const { data: invoice, error: invoiceError } = await supabase
     .from('invoices')
-    .update({
-      ...invoiceData,
-      ...(total !== undefined ? { total } : {}),
-    })
+    .update(updateData)
     .eq('id', invoiceId)
     .eq('user_id', user.id)
     .select()
@@ -612,7 +709,9 @@ export async function updateInvoice(
       .insert(
         invoiceData.items.map(item => ({
           invoice_id: invoiceId,
-          ...item,
+          description: item.description,
+          quantity: item.quantity,
+          price: item.price,
         }))
       );
 
@@ -735,7 +834,7 @@ export async function updateProfile(profileData: {
 export async function updateCompany(companyData: {
   company_name?: string;
   company_email?: string;
-  phone?: string;
+  company_phone?: string;
   billing_address?: string;
   tax_number?: string;
   company_logo_url?: string;

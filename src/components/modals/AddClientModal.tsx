@@ -12,13 +12,25 @@ interface AddClientModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit?: (data: any) => void;
+  defaultValues?: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    taxNumber?: string;
+    notes?: string;
+    contactName?: string;
+  };
 }
 
 const AddClientModal = ({
   open,
   onOpenChange,
   onSubmit = () => {},
+  defaultValues,
 }: AddClientModalProps) => {
+  const isEditMode = !!defaultValues;
+  
   const handleSubmit = (data: any) => {
     onSubmit(data);
     onOpenChange(false);
@@ -33,14 +45,18 @@ const AddClientModal = ({
       <DialogContent className="sm:max-w-[700px] p-0 gap-0">
         <div className="p-6 border-b">
           <DialogHeader>
-            <DialogTitle>Add New Client</DialogTitle>
+            <DialogTitle>{isEditMode ? "Edit Client" : "Add New Client"}</DialogTitle>
             <DialogDescription>
-              Add a new client to your client list.
+              {isEditMode ? "Update client information." : "Add a new client to your client list."}
             </DialogDescription>
           </DialogHeader>
         </div>
         <div className="max-h-[calc(85vh-8rem)] overflow-y-auto p-6">
-          <AddClientForm onSubmit={handleSubmit} onCancel={handleCancel} />
+          <AddClientForm 
+            onSubmit={handleSubmit} 
+            onCancel={handleCancel} 
+            defaultValues={defaultValues}
+          />
         </div>
       </DialogContent>
     </Dialog>

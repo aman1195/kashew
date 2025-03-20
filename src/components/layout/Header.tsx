@@ -58,7 +58,7 @@ export function Header() {
         <div className="mr-4 hidden md:flex">
           <Link href="/" className="mr-6 flex items-center space-x-2">
             <span className="hidden font-bold sm:inline-block">
-              Kashew
+              {/* Kashew */}
             </span>
           </Link>
           <nav className="flex items-center space-x-6 text-sm font-medium">
@@ -69,7 +69,7 @@ export function Header() {
                 pathname === "/dashboard" ? "text-foreground" : "text-foreground/60"
               )}
             >
-              Dashboard
+              {/* Dashboard */}
             </Link>
             <Link
               href="/clients"
@@ -80,7 +80,7 @@ export function Header() {
                   : "text-foreground/60"
               )}
             >
-              Clients
+              {/* Clients */}
             </Link>
             <Link
               href="/invoices"
@@ -91,7 +91,7 @@ export function Header() {
                   : "text-foreground/60"
               )}
             >
-              Invoices
+              {/* Invoices */}
             </Link>
           </nav>
         </div>

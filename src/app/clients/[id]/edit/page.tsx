@@ -60,9 +60,9 @@ export default function EditClientPage() {
         email: data.email,
         phone: data.phone,
         address: data.address,
-        tax_number: data.taxNumber,
+        tax_number: data.tax_number,
         notes: data.notes,
-        contact_name: data.contactName,
+        contact_name: data.contact_name,
       });
 
       router.push(`/clients/${params.id}`);

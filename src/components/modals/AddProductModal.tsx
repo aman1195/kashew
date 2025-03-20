@@ -44,20 +44,20 @@ export default function AddProductModal({
     setLoading(true);
 
     try {
-      const data = {
+      const productData = {
         name: formData.name,
         description: formData.description,
         price: Number(formData.price),
         unit: formData.unit,
-        taxRate: Number(formData.taxRate),
+        tax_rate: Number(formData.taxRate),
         type: type.charAt(0).toUpperCase() + type.slice(1),
       };
 
       let result;
       if (editData) {
-        result = await updateProduct(editData.id, data);
+        result = await updateProduct(editData.id, productData);
       } else {
-        result = await createProduct(data);
+        result = await createProduct(productData);
       }
 
       onSubmit(result);

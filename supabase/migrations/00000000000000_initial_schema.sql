@@ -101,6 +101,7 @@ CREATE TABLE profiles (
     billing_address TEXT,
     tax_number TEXT,
     phone TEXT,
+    company_phone TEXT,
     website TEXT,
     default_payment_terms INTEGER DEFAULT 30,
     default_invoice_footer TEXT

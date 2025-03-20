@@ -21,7 +21,15 @@ interface Invoice {
   date: string;
   dueDate: string;
   status: string;
+  subtotal: number;
   total: number;
+  tax: {
+    rate: number;
+    type: string;
+    amount: number;
+  };
+  notes: string;
+  terms: string;
   client: {
     id: string;
     name: string;
@@ -66,10 +74,12 @@ export default function EditInvoicePage() {
       
       // Update the invoice
       await updateInvoice(params.id as string, {
-        number: data.number,
         date: data.date,
         dueDate: data.dueDate,
         items: data.items,
+        tax: data.tax,
+        notes: data.notes,
+        terms: data.terms,
       });
 
       // Navigate back to invoice details
@@ -158,6 +168,9 @@ export default function EditInvoicePage() {
               dueDate: invoice.dueDate,
               clientId: invoice.client.id,
               items: invoice.items,
+              tax: invoice.tax,
+              notes: invoice.notes,
+              terms: invoice.terms,
             }}
           />
         )}

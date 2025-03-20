@@ -25,12 +25,13 @@ import { getInvoices } from "@/lib/queries";
 import AddInvoiceModal from "@/components/modals/AddInvoiceModal";
 import { createInvoice, updateInvoice, deleteInvoice } from "@/lib/queries";
 import { useRouter } from "next/navigation";
+import RecordPaymentModal from "@/components/modals/RecordPaymentModal";
 
 interface Invoice {
   id: string;
   number: string;
   date: string;
-  dueDate: string;
+  due_date: string;
   status: string;
   total: number;
   client: {
@@ -44,11 +45,18 @@ interface Invoice {
     quantity: number;
     price: number;
   }>;
+  tax: {
+    rate: number;
+    type: string;
+    amount: number;
+  };
 }
 
 export default function InvoicesPage() {
   const router = useRouter();
   const [addInvoiceOpen, setAddInvoiceOpen] = useState(false);
+  const [recordPaymentOpen, setRecordPaymentOpen] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [summary, setSummary] = useState({
@@ -98,8 +106,10 @@ export default function InvoicesPage() {
         return 'bg-red-100 text-red-800';
       case 'draft':
         return 'bg-gray-100 text-gray-800';
-      default: // sent/pending
+      case 'sent':
         return 'bg-yellow-100 text-yellow-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -139,16 +149,13 @@ export default function InvoicesPage() {
     alert('Send to client functionality coming soon');
   };
 
-  const handleMarkAsPaid = async (invoiceId: string) => {
-    try {
-      setLoading(true);
-      await updateInvoice(invoiceId, { status: 'paid' });
-      await loadInvoices();
-    } catch (error) {
-      console.error('Error updating invoice:', error);
-    } finally {
-      setLoading(false);
-    }
+  const handleMarkAsPaid = async (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+    setRecordPaymentOpen(true);
+  };
+
+  const handlePaymentRecorded = async () => {
+    await loadInvoices();
   };
 
   const handleDeleteInvoice = async (invoiceId: string) => {
@@ -269,7 +276,7 @@ export default function InvoicesPage() {
                       <TableCell className="font-medium">{invoice.number}</TableCell>
                       <TableCell>{invoice.client.name}</TableCell>
                       <TableCell>{formatDate(invoice.date)}</TableCell>
-                      <TableCell>{formatDate(invoice.dueDate)}</TableCell>
+                      <TableCell>{formatDate(invoice.due_date)}</TableCell>
                       <TableCell>{formatCurrency(invoice.total)}</TableCell>
                       <TableCell>
                         <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${getStatusColor(invoice.status)}`}>
@@ -304,7 +311,7 @@ export default function InvoicesPage() {
                               Send to Client
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleMarkAsPaid(invoice.id)}>
+                            <DropdownMenuItem onClick={() => handleMarkAsPaid(invoice)}>
                               Mark as Paid
                             </DropdownMenuItem>
                             <DropdownMenuItem 
@@ -331,6 +338,12 @@ export default function InvoicesPage() {
           onSubmit={handleCreateInvoice}
         />
       )}
+      <RecordPaymentModal
+        open={recordPaymentOpen}
+        onOpenChange={setRecordPaymentOpen}
+        onSubmit={handlePaymentRecorded}
+        preSelectedInvoice={selectedInvoice || undefined}
+      />
     </DashboardLayout>
   );
 }

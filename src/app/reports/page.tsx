@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import { getInvoices } from "@/lib/queries";
 import { downloadReport } from '@/lib/exportReports';
+import RevenueChart from "@/components/dashboard/RevenueChart";
 
 interface ReportData {
   revenueByMonth: {
@@ -252,22 +253,13 @@ export default function ReportsPage() {
                 <CardDescription>Monthly revenue for {timeRange}</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-[300px] flex items-end justify-between gap-2">
-                  {Object.entries(reportData.revenueByMonth).map(([month, revenue]) => {
-                    const height = (revenue / Math.max(...Object.values(reportData.revenueByMonth))) * 100;
-                    return (
-                      <div key={month} className="flex flex-col items-center gap-2 w-full">
-                        <div 
-                          className="w-full bg-vibrant-yellow rounded-t-lg"
-                          style={{ height: `${height}%` }}
-                        />
-                        <span className="text-sm font-medium -rotate-45 origin-top-left">
-                          {month}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
+                <RevenueChart 
+                  data={Object.entries(reportData.revenueByMonth).map(([month, revenue]) => ({
+                    month,
+                    revenue
+                  }))}
+                  growth={0} // You can calculate growth if needed
+                />
               </CardContent>
             </Card>
           </TabsContent>
@@ -336,7 +328,7 @@ export default function ReportsPage() {
                             style={{ width: `${percentage}%` }}
                           />
                         </div>
-                      </div>
+                  </div>
                     );
                   })}
                 </div>
@@ -348,7 +340,7 @@ export default function ReportsPage() {
             <div className="grid grid-cols-1 gap-4">
               {reportData.topClients.map((client, index) => (
                 <Card key={index} className="modern-card">
-                  <CardHeader className="pb-2">
+                <CardHeader className="pb-2">
                     <CardTitle className="text-lg flex justify-between">
                       <span>{client.name}</span>
                       <span>{formatCurrency(client.total)}</span>
@@ -357,16 +349,16 @@ export default function ReportsPage() {
                       <span>Paid: {formatCurrency(client.paid)}</span>
                       <span>Outstanding: {formatCurrency(client.outstanding)}</span>
                     </CardDescription>
-                  </CardHeader>
-                  <CardContent>
+                </CardHeader>
+                <CardContent>
                     <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                       <div 
                         className="h-full bg-green-500"
                         style={{ width: `${(client.paid / client.total) * 100}%` }}
                       />
-                    </div>
-                  </CardContent>
-                </Card>
+                </div>
+              </CardContent>
+            </Card>
               ))}
             </div>
           </TabsContent>

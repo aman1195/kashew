@@ -53,14 +53,7 @@ export default function EditProductPage() {
       setLoading(true);
       setError(null);
       
-      await updateProduct(params.id as string, {
-        name: data.name,
-        type: data.type,
-        description: data.description,
-        price: data.price,
-        unit: data.unit,
-        tax_rate: data.taxRate,
-      });
+      await updateProduct(params.id as string, data);
 
       router.push(`/products/${params.id}`);
       router.refresh();
@@ -141,9 +134,10 @@ export default function EditProductPage() {
             open={editModalOpen}
             onOpenChange={setEditModalOpen}
             onSubmit={handleUpdateProduct}
-            defaultValues={{
+            type={product.type.toLowerCase() === 'service' ? 'service' : 'product'}
+            editData={{
+              id: product.id,
               name: product.name,
-              type: product.type,
               description: product.description || '',
               price: product.price,
               unit: product.unit || '',

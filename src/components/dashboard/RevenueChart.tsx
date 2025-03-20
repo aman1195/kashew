@@ -100,7 +100,7 @@ const RevenueChart = ({ className, data = [], growth = 0 }: RevenueChartProps) =
             </div>
           </div>
 
-          <div className="h-[220px] w-full relative mt-2">
+          <div className="relative h-[200px] mt-4">
             {filteredData.length === 0 ? (
               <div className="absolute inset-0 flex items-center justify-center text-black/70">
                 No revenue data available for the selected time range

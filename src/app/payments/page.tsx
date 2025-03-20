@@ -31,6 +31,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { getPayments, deletePayment, updatePayment } from "@/lib/queries";
 import RecordPaymentModal from "@/components/modals/RecordPaymentModal";
+import EditPaymentModal from "@/components/modals/EditPaymentModal";
 
 interface Payment {
   id: string;
@@ -68,6 +69,7 @@ export default function PaymentsPage() {
   });
   const [searchQuery, setSearchQuery] = useState("");
   const [showRecordPayment, setShowRecordPayment] = useState(false);
+  const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
 
   useEffect(() => {
     loadPayments();
@@ -126,6 +128,11 @@ export default function PaymentsPage() {
 
   const handlePaymentRecorded = () => {
     loadPayments();
+  };
+
+  const handlePaymentUpdated = () => {
+    loadPayments();
+    setEditingPayment(null);
   };
 
   const handleDeletePayment = async (paymentId: string) => {
@@ -326,6 +333,9 @@ export default function PaymentsPage() {
                           <DropdownMenuSeparator />
                           <DropdownMenuItem>View Details</DropdownMenuItem>
                           <DropdownMenuItem>Send Receipt</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setEditingPayment(payment)}>
+                            Edit Payment
+                          </DropdownMenuItem>
                           {payment.status === 'pending' && (
                             <DropdownMenuItem onClick={() => handleUpdatePayment(payment.id, { status: 'completed' })}>
                               Mark as Completed
@@ -358,6 +368,17 @@ export default function PaymentsPage() {
         onOpenChange={setShowRecordPayment}
         onSubmit={handlePaymentRecorded}
       />
+      
+      {editingPayment && (
+        <EditPaymentModal
+          open={!!editingPayment}
+          onOpenChange={(open) => {
+            if (!open) setEditingPayment(null);
+          }}
+          onSubmit={handlePaymentUpdated}
+          payment={editingPayment}
+        />
+      )}
     </DashboardLayout>
   );
 }

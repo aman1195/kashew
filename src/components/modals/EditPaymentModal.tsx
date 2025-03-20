@@ -1,122 +1,54 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { getInvoices, recordPayment } from "@/lib/queries";
+import { updatePayment } from "@/lib/queries";
 
-interface RecordPaymentModalProps {
+interface EditPaymentModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: () => void;
-  preSelectedInvoice?: {
+  payment: {
     id: string;
-    number: string;
-    total: number;
+    amount: number;
+    payment_method: string;
     status: string;
-    client: {
-      name: string;
-    };
+    invoice_number: string;
+    client_name: string;
   };
 }
 
-interface Invoice {
-  id: string;
-  number: string;
-  total: number;
-  status: string;
-  client: {
-    name: string;
-  };
-}
-
-export default function RecordPaymentModal({
+export default function EditPaymentModal({
   open,
   onOpenChange,
   onSubmit,
-  preSelectedInvoice,
-}: RecordPaymentModalProps) {
+  payment,
+}: EditPaymentModalProps) {
   const [loading, setLoading] = useState(false);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    invoice_id: "",
-    amount: "",
-    payment_method: "credit_card",
-    status: "completed",
+    amount: payment?.amount.toString() || "",
+    payment_method: payment?.payment_method || "credit_card",
+    status: payment?.status || "completed",
   });
-
-  useEffect(() => {
-    if (open) {
-      loadInvoices();
-      if (preSelectedInvoice) {
-        setFormData({
-          invoice_id: preSelectedInvoice.id,
-          amount: preSelectedInvoice.total.toString(),
-          payment_method: "credit_card",
-          status: "completed",
-        });
-      }
-    }
-  }, [open, preSelectedInvoice]);
-
-  const loadInvoices = async () => {
-    try {
-      setError(null);
-      const { invoices } = await getInvoices();
-      console.log('All invoices:', invoices); // Debug log
-      // Only show unpaid invoices (draft, sent, or overdue)
-      const unpaidInvoices = invoices.filter(
-        inv => inv.status === 'draft' || inv.status === 'sent' || inv.status === 'overdue'
-      );
-      console.log('Unpaid invoices:', unpaidInvoices); // Debug log
-      
-      if (unpaidInvoices.length === 0) {
-        setError('No unpaid invoices available');
-      }
-      
-      setInvoices(unpaidInvoices);
-    } catch (error) {
-      console.error('Error loading invoices:', error);
-      setError('Failed to load invoices');
-    }
-  };
-
-  const handleInvoiceSelect = (invoiceId: string) => {
-    const invoice = invoices.find(inv => inv.id === invoiceId);
-    if (invoice) {
-      setFormData({
-        ...formData,
-        invoice_id,
-        amount: invoice.total.toString(),
-      });
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      await recordPayment({
-        invoice_id: formData.invoice_id,
+      await updatePayment(payment.id, {
         amount: Number(formData.amount),
         payment_method: formData.payment_method,
         status: formData.status as 'completed' | 'pending' | 'failed',
       });
       onSubmit();
       onOpenChange(false);
-      setFormData({
-        invoice_id: "",
-        amount: "",
-        payment_method: "credit_card",
-        status: "completed",
-      });
     } catch (error) {
-      console.error('Error recording payment:', error);
+      console.error('Error updating payment:', error);
     } finally {
       setLoading(false);
     }
@@ -126,34 +58,17 @@ export default function RecordPaymentModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Record Payment</DialogTitle>
+          <DialogTitle>Edit Payment</DialogTitle>
           <DialogDescription>
-            Record a payment for an unpaid invoice.
+            Update payment details for invoice {payment?.invoice_number}.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="invoice">Invoice</Label>
-            {error ? (
-              <div className="text-sm text-destructive">{error}</div>
-            ) : (
-              <Select
-                value={formData.invoice_id}
-                onValueChange={handleInvoiceSelect}
-                disabled={!!preSelectedInvoice}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select an invoice" />
-                </SelectTrigger>
-                <SelectContent>
-                  {invoices.map((invoice) => (
-                    <SelectItem key={invoice.id} value={invoice.id}>
-                      {invoice.number} - {invoice.client.name} (${invoice.total})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+            <Label>Invoice</Label>
+            <div className="text-sm font-medium border p-2 rounded-md bg-muted">
+              {payment?.invoice_number} - {payment?.client_name}
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -173,7 +88,7 @@ export default function RecordPaymentModal({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="paymentMethod">Payment Method</Label>
+            <Label htmlFor="payment_method">Payment Method</Label>
             <Select
               value={formData.payment_method}
               onValueChange={(value) =>
@@ -221,7 +136,7 @@ export default function RecordPaymentModal({
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? "Recording..." : "Record Payment"}
+              {loading ? "Saving..." : "Update Payment"}
             </Button>
           </div>
         </form>

@@ -43,6 +43,7 @@ interface Profile {
   phone: string;
   company_name: string;
   company_email: string;
+  company_phone: string;
   billing_address: string;
   tax_number: string;
   notification_preferences: {
@@ -110,7 +111,7 @@ export default function SettingsPage() {
       await updateCompany({
         company_name: profile.company_name,
         company_email: profile.company_email,
-        phone: profile.phone,
+        company_phone: profile.company_phone,
         billing_address: profile.billing_address,
         tax_number: profile.tax_number,
       });
@@ -313,6 +314,15 @@ export default function SettingsPage() {
                           type="email"
                           value={profile?.company_email || ''}
                           onChange={(e) => setProfile(prev => prev ? { ...prev, company_email: e.target.value } : null)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="companyPhone">Company Phone</Label>
+                        <Input
+                          id="companyPhone"
+                          type="tel"
+                          value={profile?.company_phone || ''}
+                          onChange={(e) => setProfile(prev => prev ? { ...prev, company_phone: e.target.value } : null)}
                         />
                       </div>
                       <div className="space-y-2">
