@@ -18,6 +18,7 @@ import { Github, Mail, AlertCircle, Loader2 } from "lucide-react";
 import { useAuth } from "./AuthProvider";
 import { useRouter } from "next/navigation";
 import CompanyCreationForm from "./CompanyCreationForm";
+import OTPVerification from "./OTPVerification";
 
 interface AuthFormProps {
   className?: string;
@@ -26,7 +27,7 @@ interface AuthFormProps {
 const AuthForm = ({ className = "" }: AuthFormProps) => {
   const router = useRouter();
   const { signInWithEmail, signUpWithEmail, googleSignIn } = useAuth();
-  const [formType, setFormType] = useState<"login" | "register" | "company">("login");
+  const [formType, setFormType] = useState<"login" | "register" | "verify" | "company">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -42,9 +43,9 @@ const AuthForm = ({ className = "" }: AuthFormProps) => {
       if (formType === "login") {
         await signInWithEmail(email, password);
         router.push("/dashboard");
-      } else {
+      } else if (formType === "register") {
         await signUpWithEmail(email, password, name);
-        setFormType("company");
+        setFormType("verify");
       }
     } catch (err) {
       console.error('Auth error:', err);
@@ -76,8 +77,16 @@ const AuthForm = ({ className = "" }: AuthFormProps) => {
     }
   };
 
+  const handleVerificationComplete = () => {
+    setFormType("company");
+  };
+
   if (formType === "company") {
     return <CompanyCreationForm className={className} />;
+  }
+
+  if (formType === "verify") {
+    return <OTPVerification email={email} onVerificationComplete={handleVerificationComplete} className={className} />;
   }
 
   return (
