@@ -17,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Github, Mail, AlertCircle, Loader2 } from "lucide-react";
 import { useAuth } from "./AuthProvider";
 import { useRouter } from "next/navigation";
+import CompanyCreationForm from "./CompanyCreationForm";
 
 interface AuthFormProps {
   className?: string;
@@ -25,7 +26,7 @@ interface AuthFormProps {
 const AuthForm = ({ className = "" }: AuthFormProps) => {
   const router = useRouter();
   const { signInWithEmail, signUpWithEmail, googleSignIn } = useAuth();
-  const [formType, setFormType] = useState<"login" | "register">("login");
+  const [formType, setFormType] = useState<"login" | "register" | "company">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -40,10 +41,11 @@ const AuthForm = ({ className = "" }: AuthFormProps) => {
     try {
       if (formType === "login") {
         await signInWithEmail(email, password);
+        router.push("/dashboard");
       } else {
         await signUpWithEmail(email, password, name);
+        setFormType("company");
       }
-      router.push("/");
     } catch (err) {
       console.error('Auth error:', err);
       if (err instanceof Error) {
@@ -66,13 +68,17 @@ const AuthForm = ({ className = "" }: AuthFormProps) => {
 
     try {
       await googleSignIn();
-      router.push("/");
+      router.push("/dashboard");
     } catch (err) {
       setError("Failed to sign in with Google. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (formType === "company") {
+    return <CompanyCreationForm className={className} />;
+  }
 
   return (
     <Card className={`w-full max-w-md mx-auto modern-card ${className}`}>
