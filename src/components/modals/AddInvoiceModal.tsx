@@ -262,12 +262,17 @@ export default function AddInvoiceModal({
       const total = calculateTotal();
 
       const invoiceData = {
-        client_id: formData.client_id,
+        clientId: formData.client_id,
         date: formData.date,
-        due_date: formData.due_date,
-        items: formData.items,
+        dueDate: formData.due_date,
+        items: formData.items.map(item => ({
+          description: item.description,
+          quantity: item.quantity,
+          price: item.price,
+        })),
         tax: {
-          ...formData.tax,
+          rate: formData.tax.rate,
+          type: formData.tax.type,
           amount: tax,
         },
         subtotal,
@@ -277,7 +282,7 @@ export default function AddInvoiceModal({
       };
 
       await onSubmit(invoiceData);
-    onOpenChange(false);
+      onOpenChange(false);
     } catch (error) {
       console.error('Error creating invoice:', error);
     } finally {

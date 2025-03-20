@@ -378,7 +378,7 @@ export async function getInvoices() {
       id: invoice.id,
       number: invoice.number,
       date: invoice.date,
-      dueDate: invoice.due_date,
+      due_date: invoice.due_date,
       status: isOverdue ? 'overdue' : invoice.status,
       subtotal: Number(invoice.subtotal) || 0,
       total: Number(invoice.total),

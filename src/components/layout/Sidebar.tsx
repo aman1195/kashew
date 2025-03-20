@@ -13,6 +13,7 @@ import {
   CreditCard,
   BarChart3,
   Sparkles,
+  Building2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -65,6 +66,11 @@ const Sidebar = ({ className = "" }: SidebarProps) => {
       title: "Dashboard",
       href: "/dashboard",
       icon: <LayoutDashboard className="h-5 w-5" />,
+    },
+    {
+      title: "Company",
+      href: "/company",
+      icon: <Building2 className="h-5 w-5" />,
     },
     {
       title: "Invoices",

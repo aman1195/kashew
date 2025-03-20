@@ -40,12 +40,18 @@ export async function middleware(request: NextRequest) {
   const isAuthPage = request.nextUrl.pathname.startsWith('/auth')
   const isApiRoute = request.nextUrl.pathname.startsWith('/api')
   const isPublicRoute = request.nextUrl.pathname === '/'
+  const isDashboardRoute = request.nextUrl.pathname.startsWith('/dashboard')
+  const isAiRoute = request.nextUrl.pathname.startsWith('/ai')
 
   if (!session) {
-    if (!isAuthPage && !isApiRoute && !isPublicRoute) {
-      return NextResponse.redirect(new URL('/auth/login', request.url))
+    // Allow access to public routes and auth pages
+    if (isPublicRoute || isAuthPage || isApiRoute) {
+      return response
     }
+    // Redirect to auth for protected routes
+    return NextResponse.redirect(new URL('/auth', request.url))
   } else if (isAuthPage) {
+    // Redirect authenticated users away from auth pages
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
