@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from '@/components/auth/AuthProvider';
-import { getProfile, updateCompany, createCompany, getCompanyUsers, inviteCompanyUser, removeCompanyUser } from '@/lib/queries';
+import { getProfile, updateCompany } from '@/lib/queries';
 
 interface Company {
   id: string;
@@ -36,7 +36,6 @@ interface CompanyContextType {
   users: CompanyUser[];
   loading: boolean;
   error: string | null;
-  isAdmin: boolean;
   updateCompany: (data: Partial<Company>) => Promise<void>;
   inviteUser: (email: string) => Promise<void>;
   removeUser: (userId: string) => Promise<void>;
@@ -50,50 +49,34 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
   const [users, setUsers] = useState<CompanyUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
   const { user } = useAuth();
 
-  const fetchCompanyData = async () => {
-    try {
-      setLoading(true);
-      const profile = await getProfile();
-      
-      if (profile.company_id) {
-        // User is part of a company
+  useEffect(() => {
+    const fetchCompanyData = async () => {
+      try {
+        setLoading(true);
+        const profile = await getProfile();
+        
+        // Transform profile data to company format
         const companyData: Company = {
-          id: profile.company_id,
+          id: profile.id,
           name: profile.company_name || "",
           email: profile.company_email || "",
           phone: profile.company_phone || "",
           address: profile.billing_address || "",
           tax_id: profile.tax_number || "",
-          created_at: profile.company_created_at || new Date().toISOString(),
-          updated_at: profile.company_updated_at || new Date().toISOString(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         };
         
         setCompany(companyData);
-
-        // Fetch company users
-        const companyUsers = await getCompanyUsers(profile.company_id);
-        setUsers(companyUsers);
-
-        // Check if user is admin
-        const userRole = companyUsers.find(u => u.user_id === user?.id)?.role;
-        setIsAdmin(userRole === 'admin');
-      } else {
-        // User is not part of a company yet
-        setCompany(null);
-        setUsers([]);
-        setIsAdmin(false);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
-  useEffect(() => {
     if (user) {
       fetchCompanyData();
     }
@@ -103,19 +86,25 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
     try {
       setError(null);
       
-      if (!company) {
-        // Create new company
-        const newCompany = await createCompany({
-          ...data,
-          user_id: user!.id,
-        });
-        setCompany(newCompany);
-        setIsAdmin(true);
-      } else {
-        // Update existing company
-        const updatedCompany = await updateCompany(data);
-        setCompany(updatedCompany);
-      }
+      // Transform company data to profile format
+      const profileData = {
+        company_name: data.name,
+        company_email: data.email,
+        company_phone: data.phone,
+        billing_address: data.address,
+        tax_number: data.tax_id,
+      };
+      
+      await updateCompany(profileData);
+      
+      // Update local state
+      const updatedCompany = {
+        ...company!,
+        ...data,
+        updated_at: new Date().toISOString(),
+      };
+      
+      setCompany(updatedCompany);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
       throw err;
@@ -125,9 +114,23 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
   const inviteUser = async (email: string) => {
     try {
       setError(null);
-      if (!company) throw new Error('No company found');
+      // TODO: Implement user invitation with Supabase
+      const newUser: CompanyUser = {
+        id: Math.random().toString(),
+        company_id: company!.id,
+        user_id: Math.random().toString(),
+        role: 'member',
+        status: 'invited',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        user: {
+          email,
+          user_metadata: {
+            full_name: email.split('@')[0],
+          },
+        },
+      };
 
-      const newUser = await inviteCompanyUser(company.id, email);
       setUsers([...users, newUser]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -138,9 +141,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
   const removeUser = async (userId: string) => {
     try {
       setError(null);
-      if (!company) throw new Error('No company found');
-
-      await removeCompanyUser(company.id, userId);
+      // TODO: Implement user removal with Supabase
       setUsers(users.filter(user => user.user_id !== userId));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -163,7 +164,6 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
         users,
         loading,
         error,
-        isAdmin,
         updateCompany: updateCompanyData,
         inviteUser,
         removeUser,

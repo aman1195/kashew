@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Mail, Building2, Users, Loader2, AlertCircle } from "lucide-react";
+import { Plus, Mail, Building2, Users, Loader2 } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -27,7 +27,6 @@ import { useCompany } from "@/contexts/CompanyContext";
 import { toast } from "sonner";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import dynamic from "next/dynamic";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const ProtectedRoute = dynamic(
   () => import("@/components/layout/ProtectedRoute"),
@@ -35,7 +34,7 @@ const ProtectedRoute = dynamic(
 );
 
 export default function CompanyPage() {
-  const { company, users, loading, error, isAdmin, updateCompany, inviteUser, removeUser } = useCompany();
+  const { company, users, loading, error, updateCompany, inviteUser, removeUser } = useCompany();
   const [inviteEmail, setInviteEmail] = useState("");
   const [isInviting, setIsInviting] = useState(false);
 
@@ -95,27 +94,7 @@ export default function CompanyPage() {
       <ProtectedRoute>
         <DashboardLayout title="Company">
           <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          </div>
-        </DashboardLayout>
-      </ProtectedRoute>
-    );
-  }
-
-  if (!isAdmin) {
-    return (
-      <ProtectedRoute>
-        <DashboardLayout title="Company">
-          <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                You don't have permission to access this page. Please contact your company administrator.
-              </AlertDescription>
-            </Alert>
+            <div className="text-red-500">{error}</div>
           </div>
         </DashboardLayout>
       </ProtectedRoute>
@@ -269,7 +248,7 @@ export default function CompanyPage() {
                     </DialogContent>
                   </Dialog>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="px-0">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -277,27 +256,36 @@ export default function CompanyPage() {
                         <TableHead>Email</TableHead>
                         <TableHead>Role</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {users.map((user) => (
                         <TableRow key={user.id}>
-                          <TableCell>{user.user.user_metadata.full_name}</TableCell>
-                          <TableCell>{user.user.email}</TableCell>
+                          <TableCell>{user.user?.user_metadata?.full_name || 'N/A'}</TableCell>
+                          <TableCell>{user.user?.email || 'N/A'}</TableCell>
                           <TableCell className="capitalize">{user.role}</TableCell>
-                          <TableCell className="capitalize">{user.status}</TableCell>
-                          <TableCell className="text-right">
-                            {user.role !== 'admin' && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleRemoveUser(user.user_id)}
-                                className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                              >
-                                Remove
-                              </Button>
-                            )}
+                          <TableCell>
+                            <span
+                              className={`px-2 py-1 rounded-full text-xs ${
+                                user.status === "active"
+                                  ? "bg-green-100 text-green-800"
+                                  : user.status === "pending"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : "bg-blue-100 text-blue-800"
+                              }`}
+                            >
+                              {user.status}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleRemoveUser(user.user_id)}
+                            >
+                              Remove
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))}

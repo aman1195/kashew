@@ -7,15 +7,15 @@ import VerifyEmail from "@/components/auth/VerifyEmail";
 import { useAuth } from "@/components/auth/AuthProvider";
 
 export default function AuthPage() {
-  const { user, loading } = useAuth();
+  const { user, isLoading } = useAuth();
   const router = useRouter();
 
   // Redirect to AI page if already logged in
   useEffect(() => {
-    if (!loading && user) {
+    if (!isLoading && user) {
       router.push("/ai");
     }
-  }, [user, loading, router]);
+  }, [user, isLoading, router]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-muted/30">
