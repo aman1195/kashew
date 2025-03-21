@@ -10,7 +10,7 @@ type AuthContextType = {
   session: Session | null
   signOut: () => Promise<void>
   signInWithEmail: (email: string, password: string) => Promise<void>
-  signUpWithEmail: (email: string, password: string, name: string) => Promise<void>
+  signUpWithEmail: (email: string, password: string, name: string, companyName: string) => Promise<void>
   sendVerificationEmail: () => Promise<void>
   loading: boolean
 }
@@ -45,7 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) throw error
   }
 
-  const signUpWithEmail = async (email: string, password: string, name: string) => {
+  const signUpWithEmail = async (email: string, password: string, name: string, companyName: string) => {
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -53,6 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         options: {
           data: {
             full_name: name,
+            company_name: companyName,
           },
         },
       })
@@ -64,6 +65,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (!data.user) {
         throw new Error('No user data returned')
+      }
+
+      // Update the profile with company information
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          company_name: companyName,
+          company_email: email,
+          full_name: name,
+        })
+        .eq('id', data.user.id);
+
+      if (profileError) {
+        console.error('Profile update error:', profileError);
+        throw new Error('Failed to update profile');
       }
     } catch (error) {
       console.error('Sign up error:', error)

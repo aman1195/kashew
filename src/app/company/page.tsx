@@ -34,7 +34,7 @@ const ProtectedRoute = dynamic(
 );
 
 export default function CompanyPage() {
-  const { company, users, loading, error, updateCompany, inviteUser, removeUser } = useCompany();
+  const { company, members, loading, error, updateCompany, inviteUser, removeUser } = useCompany();
   const [inviteEmail, setInviteEmail] = useState("");
   const [isInviting, setIsInviting] = useState(false);
 
@@ -139,7 +139,10 @@ export default function CompanyPage() {
                     <Input
                       id="companyName"
                       value={company?.name || ""}
-                      onChange={(e) => company && updateCompany({ name: e.target.value })}
+                      onChange={(e) => company && updateCompany({ 
+                        name: e.target.value,
+                        company_name: e.target.value 
+                      })}
                       className="bg-background"
                       placeholder="Enter your company name"
                     />
@@ -150,7 +153,10 @@ export default function CompanyPage() {
                       id="companyEmail"
                       type="email"
                       value={company?.email || ""}
-                      onChange={(e) => company && updateCompany({ email: e.target.value })}
+                      onChange={(e) => company && updateCompany({ 
+                        email: e.target.value,
+                        company_email: e.target.value 
+                      })}
                       className="bg-background"
                       placeholder="contact@company.com"
                     />
@@ -161,7 +167,10 @@ export default function CompanyPage() {
                       id="companyPhone"
                       type="tel"
                       value={company?.phone || ""}
-                      onChange={(e) => company && updateCompany({ phone: e.target.value })}
+                      onChange={(e) => company && updateCompany({ 
+                        phone: e.target.value,
+                        company_phone: e.target.value 
+                      })}
                       className="bg-background"
                       placeholder="+1 (555) 123-4567"
                     />
@@ -171,7 +180,10 @@ export default function CompanyPage() {
                     <Input
                       id="companyAddress"
                       value={company?.address || ""}
-                      onChange={(e) => company && updateCompany({ address: e.target.value })}
+                      onChange={(e) => company && updateCompany({ 
+                        address: e.target.value,
+                        billing_address: e.target.value 
+                      })}
                       className="bg-background"
                       placeholder="123 Business Ave, Suite 100, City, State ZIP"
                     />
@@ -181,7 +193,10 @@ export default function CompanyPage() {
                     <Input
                       id="companyTaxId"
                       value={company?.tax_id || ""}
-                      onChange={(e) => company && updateCompany({ tax_id: e.target.value })}
+                      onChange={(e) => company && updateCompany({ 
+                        tax_id: e.target.value,
+                        tax_number: e.target.value 
+                      })}
                       className="bg-background"
                       placeholder="US123456789"
                     />
@@ -260,29 +275,29 @@ export default function CompanyPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {users.map((user) => (
-                        <TableRow key={user.id}>
-                          <TableCell>{user.user?.user_metadata?.full_name || 'N/A'}</TableCell>
-                          <TableCell>{user.user?.email || 'N/A'}</TableCell>
-                          <TableCell className="capitalize">{user.role}</TableCell>
+                      {members.map((member) => (
+                        <TableRow key={member.id}>
+                          <TableCell>{member.user?.user_metadata?.full_name || 'N/A'}</TableCell>
+                          <TableCell>{member.user?.email || 'N/A'}</TableCell>
+                          <TableCell className="capitalize">{member.role}</TableCell>
                           <TableCell>
                             <span
                               className={`px-2 py-1 rounded-full text-xs ${
-                                user.status === "active"
+                                member.status === "active"
                                   ? "bg-green-100 text-green-800"
-                                  : user.status === "pending"
+                                  : member.status === "pending"
                                   ? "bg-yellow-100 text-yellow-800"
                                   : "bg-blue-100 text-blue-800"
                               }`}
                             >
-                              {user.status}
+                              {member.status}
                             </span>
                           </TableCell>
                           <TableCell>
                             <Button 
                               variant="ghost" 
                               size="sm"
-                              onClick={() => handleRemoveUser(user.user_id)}
+                              onClick={() => handleRemoveUser(member.user_id)}
                             >
                               Remove
                             </Button>

@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { getProfile, updateCompany } from '@/lib/queries';
+import { createClient } from '@/lib/supabase/client';
 
 interface Company {
   id: string;
@@ -13,6 +14,11 @@ interface Company {
   tax_id: string;
   created_at: string;
   updated_at: string;
+  company_name: string;
+  company_email: string;
+  company_phone: string;
+  billing_address: string;
+  tax_number: string;
 }
 
 interface CompanyUser {
@@ -31,145 +37,238 @@ interface CompanyUser {
   };
 }
 
+interface CompanyMember {
+  id: string;
+  user_id: string;
+  role: 'owner' | 'admin' | 'member';
+  status: 'pending' | 'active' | 'rejected';
+  created_at: string;
+  updated_at: string;
+  user: {
+    id: string;
+    email: string;
+    user_metadata: {
+      full_name: string;
+    };
+  };
+}
+
 interface CompanyContextType {
   company: Company | null;
-  users: CompanyUser[];
+  members: CompanyMember[];
   loading: boolean;
   error: string | null;
   updateCompany: (data: Partial<Company>) => Promise<void>;
   inviteUser: (email: string) => Promise<void>;
   removeUser: (userId: string) => Promise<void>;
-  refresh: () => void;
+  acceptInvitation: (companyId: string) => Promise<void>;
 }
 
 const CompanyContext = createContext<CompanyContextType | undefined>(undefined);
 
 export function CompanyProvider({ children }: { children: React.ReactNode }) {
   const [company, setCompany] = useState<Company | null>(null);
-  const [users, setUsers] = useState<CompanyUser[]>([]);
+  const [members, setMembers] = useState<CompanyMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
+  const supabase = createClient();
 
-  useEffect(() => {
-    const fetchCompanyData = async () => {
-      try {
-        setLoading(true);
-        const profile = await getProfile();
-        
-        // Transform profile data to company format
-        const companyData: Company = {
-          id: profile.id,
-          name: profile.company_name || "",
-          email: profile.company_email || "",
-          phone: profile.company_phone || "",
-          address: profile.billing_address || "",
-          tax_id: profile.tax_number || "",
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
-        
-        setCompany(companyData);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred');
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchCompanyData = async () => {
+    if (!user) return;
 
-    if (user) {
-      fetchCompanyData();
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Fetch company profile
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError) throw profileError;
+
+      // Fetch company members with proper foreign key relationships
+      const { data: membersData, error: membersError } = await supabase
+        .from('company_memberships')
+        .select(`
+          id,
+          user_id,
+          role,
+          status,
+          created_at,
+          updated_at
+        `)
+        .eq('company_id', user.id);
+
+      if (membersError) throw membersError;
+
+      // Fetch user data for each member
+      const membersWithUserData = await Promise.all(
+        (membersData || []).map(async (member) => {
+          const { data: userData, error: userError } = await supabase
+            .from('profiles')
+            .select('id, email, user_metadata')
+            .eq('id', member.user_id)
+            .single();
+
+          if (userError) {
+            console.error('Error fetching user data:', userError);
+            return null;
+          }
+
+          return {
+            id: member.id,
+            user_id: member.user_id,
+            role: member.role as 'owner' | 'admin' | 'member',
+            status: member.status as 'pending' | 'active' | 'rejected',
+            created_at: member.created_at,
+            updated_at: member.updated_at,
+            user: {
+              id: userData.id,
+              email: userData.email,
+              user_metadata: {
+                full_name: userData.user_metadata?.full_name || ''
+              }
+            }
+          };
+        })
+      );
+
+      // Filter out any null values from failed user data fetches
+      const validMembers = membersWithUserData.filter((member): member is CompanyMember => member !== null);
+      setMembers(validMembers);
+
+      setCompany({
+        id: profile.id,
+        name: profile.company_name || profile.full_name || "",
+        email: profile.company_email || profile.email || "",
+        phone: profile.company_phone || profile.phone || "",
+        address: profile.billing_address || "",
+        tax_id: profile.tax_number || "",
+        created_at: profile.created_at,
+        updated_at: profile.updated_at,
+        company_name: profile.company_name || profile.full_name || "",
+        company_email: profile.company_email || profile.email || "",
+        company_phone: profile.company_phone || profile.phone || "",
+        billing_address: profile.billing_address || "",
+        tax_number: profile.tax_number || "",
+      });
+    } catch (err) {
+      console.error('Error fetching company data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch company data');
+    } finally {
+      setLoading(false);
     }
-  }, [user]);
+  };
 
-  const updateCompanyData = async (data: Partial<Company>): Promise<void> => {
+  const updateCompany = async (data: Partial<Company>) => {
+    if (!user) return;
+
     try {
       setError(null);
-      
-      // Transform company data to profile format
-      const profileData = {
-        company_name: data.name,
-        company_email: data.email,
-        company_phone: data.phone,
-        billing_address: data.address,
-        tax_number: data.tax_id,
-      };
-      
-      await updateCompany(profileData);
-      
-      // Update local state
-      const updatedCompany = {
-        ...company!,
-        ...data,
-        updated_at: new Date().toISOString(),
-      };
-      
-      setCompany(updatedCompany);
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          company_name: data.name,
+          company_email: data.email,
+          company_phone: data.phone,
+          billing_address: data.address,
+          tax_number: data.tax_id,
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      setCompany(prev => prev ? { ...prev, ...data } : null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      console.error('Error updating company:', err);
+      setError(err instanceof Error ? err.message : 'Failed to update company');
       throw err;
     }
   };
 
   const inviteUser = async (email: string) => {
+    if (!user) return;
+
     try {
       setError(null);
-      // TODO: Implement user invitation with Supabase
-      const newUser: CompanyUser = {
-        id: Math.random().toString(),
-        company_id: company!.id,
-        user_id: Math.random().toString(),
-        role: 'member',
-        status: 'invited',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        user: {
-          email,
-          user_metadata: {
-            full_name: email.split('@')[0],
-          },
-        },
-      };
+      const { error } = await supabase.rpc('handle_user_invitation', {
+        p_company_id: user.id,
+        p_email: email,
+        p_role: 'member'
+      });
 
-      setUsers([...users, newUser]);
+      if (error) throw error;
+
+      // Refresh company data to show new member
+      await fetchCompanyData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      console.error('Error inviting user:', err);
+      setError(err instanceof Error ? err.message : 'Failed to invite user');
       throw err;
     }
   };
 
   const removeUser = async (userId: string) => {
+    if (!user) return;
+
     try {
       setError(null);
-      // TODO: Implement user removal with Supabase
-      setUsers(users.filter(user => user.user_id !== userId));
+      const { error } = await supabase.rpc('remove_company_member', {
+        p_company_id: user.id,
+        p_user_id: userId
+      });
+
+      if (error) throw error;
+
+      // Refresh company data to remove member
+      await fetchCompanyData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      console.error('Error removing user:', err);
+      setError(err instanceof Error ? err.message : 'Failed to remove user');
       throw err;
     }
   };
 
-  const refresh = () => {
-    setLoading(true);
-    if (user) {
-      fetchCompanyData();
+  const acceptInvitation = async (companyId: string) => {
+    if (!user) return;
+
+    try {
+      setError(null);
+      const { error } = await supabase.rpc('accept_invitation', {
+        p_company_id: companyId,
+        p_user_id: user.id
+      });
+
+      if (error) throw error;
+
+      // Refresh company data to show updated status
+      await fetchCompanyData();
+    } catch (err) {
+      console.error('Error accepting invitation:', err);
+      setError(err instanceof Error ? err.message : 'Failed to accept invitation');
+      throw err;
     }
-    setLoading(false);
   };
 
+  useEffect(() => {
+    fetchCompanyData();
+  }, [user]);
+
   return (
-    <CompanyContext.Provider
-      value={{
-        company,
-        users,
-        loading,
-        error,
-        updateCompany: updateCompanyData,
-        inviteUser,
-        removeUser,
-        refresh,
-      }}
-    >
+    <CompanyContext.Provider value={{
+      company,
+      members,
+      loading,
+      error,
+      updateCompany,
+      inviteUser,
+      removeUser,
+      acceptInvitation,
+    }}>
       {children}
     </CompanyContext.Provider>
   );

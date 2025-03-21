@@ -584,32 +584,32 @@ export async function recordPayment(paymentData: {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
-  const { data, error } = await supabase
+  // Insert the payment using a raw SQL query
+  const { error: insertError } = await supabase.rpc('insert_payment', {
+    p_invoice_id: paymentData.invoiceId,
+    p_amount: paymentData.amount,
+    p_payment_method: paymentData.paymentMethod,
+    p_user_id: user.id,
+    p_status: paymentData.status
+  });
+
+  if (insertError) throw insertError;
+
+  // Fetch the payment
+  const { data: payment, error: fetchError } = await supabase
     .from('payments')
-    .insert([
-      {
-        invoice_id: paymentData.invoiceId,
-        amount: paymentData.amount,
-        payment_method: paymentData.paymentMethod,
-        user_id: user.id,
-        status: paymentData.status,
-      },
-    ])
-    .select()
+    .select('id, amount, payment_method, status, created_at')
+    .match({ 
+      user_id: user.id,
+      invoice_id: paymentData.invoiceId 
+    })
+    .order('created_at', { ascending: false })
+    .limit(1)
     .single();
 
-  if (error) throw error;
+  if (fetchError) throw fetchError;
 
-  // Only update invoice status to paid if payment is completed
-  if (paymentData.status === 'completed') {
-    await supabase
-      .from('invoices')
-      .update({ status: 'paid' })
-      .eq('id', paymentData.invoiceId)
-      .eq('user_id', user.id);
-  }
-
-  return data;
+  return payment;
 }
 
 export async function deleteInvoice(invoiceId: string) {
@@ -832,6 +832,7 @@ export async function updateProfile(profileData: {
 }
 
 export async function updateCompany(companyData: {
+  name?: string;
   company_name?: string;
   company_email?: string;
   company_phone?: string;
@@ -842,9 +843,15 @@ export async function updateCompany(companyData: {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
+  // If name is provided, update both name and company_name
+  const updateData = {
+    ...companyData,
+    ...(companyData.name ? { company_name: companyData.name } : {}),
+  };
+
   const { data, error } = await supabase
     .from('profiles')
-    .update(companyData)
+    .update(updateData)
     .eq('id', user.id)
     .select()
     .single();

@@ -29,6 +29,7 @@ const AuthForm = ({ className = "" }: AuthFormProps) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [companyName, setCompanyName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -41,7 +42,7 @@ const AuthForm = ({ className = "" }: AuthFormProps) => {
       if (formType === "login") {
         await signInWithEmail(email, password);
       } else {
-        await signUpWithEmail(email, password, name);
+        await signUpWithEmail(email, password, name, companyName);
       }
       router.push("/");
     } catch (err) {
@@ -152,12 +153,23 @@ const AuthForm = ({ className = "" }: AuthFormProps) => {
           <TabsContent value="register">
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Name</Label>
+                <Label htmlFor="name">Full Name</Label>
                 <Input
                   id="name"
                   placeholder="John Doe"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="companyName">Company Name</Label>
+                <Input
+                  id="companyName"
+                  placeholder="Your Company"
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
                   required
                   disabled={isLoading}
                 />
